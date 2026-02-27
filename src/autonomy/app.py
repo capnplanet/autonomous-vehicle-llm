@@ -5,21 +5,25 @@ from .cloud_planner import CloudPlanner
 from .edge_supervisor import EdgeSupervisor
 from .models import VehicleState
 from .plan_verifier import PlanVerifier
-from .policy import load_policy_config
+from .policy import load_policy_config, load_transport_config
 from .safety_kernel import SafetyKernel
-from .vehicle_adapter import GroundVehicleAdapter
+from .transport import HttpCommandTransport
+from .vehicle_adapter import GroundHttpVehicleAdapter, GroundVehicleAdapter
 
 
 def run_demo() -> None:
     planner = CloudPlanner()
     verifier = PlanVerifier()
     policy = load_policy_config(Path("config/policy.default.json"))
+    transport_config = load_transport_config(Path("config/transport.default.json"))
     safety_kernel = SafetyKernel(config=policy)
-    adapter = GroundVehicleAdapter()
+    primary_adapter = GroundHttpVehicleAdapter(HttpCommandTransport(transport_config))
+    failover_adapter = GroundVehicleAdapter()
     audit_logger = SignedAuditLogger(file_path=Path("logs/audit.log"), secret="dev-secret")
     supervisor = EdgeSupervisor(
         safety_kernel=safety_kernel,
-        adapter=adapter,
+        adapter=primary_adapter,
+        failover_adapter=failover_adapter,
         audit_logger=audit_logger,
     )
 

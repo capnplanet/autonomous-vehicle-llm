@@ -1,0 +1,2 @@
+class AdapterExecutionError(RuntimeError):
+    pass

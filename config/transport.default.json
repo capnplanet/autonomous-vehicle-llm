@@ -1,0 +1,9 @@
+{
+  "endpoint_url": "http://127.0.0.1:9999",
+  "timeout_s": 0.2,
+  "auth_token": "dev-token",
+  "retry": {
+    "max_attempts": 2,
+    "backoff_s": 0.05
+  }
+}

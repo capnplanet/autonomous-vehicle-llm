@@ -57,3 +57,17 @@ class CapabilityProfile:
     domain: VehicleDomain
     max_speed_mps: float
     supports_return_to_home: bool = True
+
+
+@dataclass(slots=True)
+class RetryPolicy:
+    max_attempts: int = 3
+    backoff_s: float = 0.2
+
+
+@dataclass(slots=True)
+class TransportConfig:
+    endpoint_url: str
+    timeout_s: float = 1.0
+    auth_token: str | None = None
+    retry: RetryPolicy = field(default_factory=RetryPolicy)
