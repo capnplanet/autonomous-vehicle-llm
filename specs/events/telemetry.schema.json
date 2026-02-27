@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TelemetryEvent",
+  "type": "object",
+  "required": ["vehicle_id", "timestamp", "x", "y", "battery_pct", "armed", "connected"],
+  "properties": {
+    "vehicle_id": {"type": "string"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "x": {"type": "number"},
+    "y": {"type": "number"},
+    "battery_pct": {"type": "number", "minimum": 0, "maximum": 100},
+    "armed": {"type": "boolean"},
+    "connected": {"type": "boolean"}
+  },
+  "additionalProperties": false
+}

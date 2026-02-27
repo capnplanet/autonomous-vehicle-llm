@@ -1,0 +1,34 @@
+openapi: 3.0.3
+info:
+  title: Vehicle Adapter API
+  version: 0.1.0
+paths:
+  /vehicles/{vehicleId}/commands:
+    post:
+      summary: Send a command to a vehicle
+      parameters:
+        - in: path
+          name: vehicleId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type:
+                  type: string
+                  enum: [arm, move_to, hold, return_to_home, disarm]
+                x:
+                  type: number
+                y:
+                  type: number
+                speed_mps:
+                  type: number
+      responses:
+        '202':
+          description: Accepted

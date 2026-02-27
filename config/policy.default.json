@@ -1,0 +1,5 @@
+{
+  "max_speed_mps": 8.0,
+  "min_battery_for_motion_pct": 25.0,
+  "geofence_abs_xy_limit_m": 100.0
+}
