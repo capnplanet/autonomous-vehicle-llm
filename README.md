@@ -13,6 +13,7 @@ Safety-first scaffold for autonomous movement of unmanned vehicles.
 - `ledger`: durable SQLite command ledger for idempotency persistence and per-vehicle ACK nonce tracking.
 - `keyring`: per-vendor Ed25519 public keys with rotation and revocation support.
 - `cert_pins`: per-vendor certificate fingerprint pinsets for mTLS identity attestation.
+- `bundle_updater`: signed, versioned key/pin/rollout update bundles with tamper-evident chain state.
 - `audit`: tamper-evident signed audit log chain.
 
 ## Quick Start
@@ -30,6 +31,8 @@ python -m src.main
 Transport config supports rotating bearer tokens, TLS/mTLS cert paths, command ACK field mapping, nonce replay windows, Ed25519 signature verification, key-id/vendor routing, certificate fingerprint pinsets, and durable idempotency store paths.
 
 Certificate pinsets support staged rollout via `active` and `next` windows, automatic cutover when active pins expire, and rollback to previous active pins.
+
+Transport rollout policy supports automatic certificate pin rollback when ACK verification failure rate breaches configured thresholds.
 
 ## Runtime Failover
 

@@ -13,6 +13,7 @@ from autonomy.models import (
     CertAttestationConfig,
     IdempotencyConfig,
     RetryPolicy,
+    RolloutPolicyConfig,
     TlsConfig,
     TransportConfig,
 )
@@ -135,6 +136,13 @@ def _base_config() -> TransportConfig:
             required=True,
             fingerprint_field="mtls_cert_fingerprint",
             pinset_path=pinset_path,
+        ),
+        rollout_policy=RolloutPolicyConfig(
+            auto_rollback_enabled=True,
+            error_window_size=20,
+            error_rate_threshold=0.4,
+            min_samples=5,
+            rollback_cooldown_s=30,
         ),
         idempotency=IdempotencyConfig(
             enabled=True,
@@ -304,12 +312,15 @@ def test_http_transport_rejects_revoked_key(monkeypatch):
         json.dump(keyring_data, handle)
 
     transport = HttpCommandTransport(config)
+    nonce = 0
 
     def fake_urlopen(req, timeout, context=None):
+        nonlocal nonce
+        nonce += 1
         command_id = json.loads(req.data.decode("utf-8"))["command_id"]
         ack = {
             "command_id": command_id,
-            "ack_nonce": 1,
+            "ack_nonce": nonce,
             "ack_kid": "kid-a",
             "vendor_id": "vendor-test",
             "mtls_cert_fingerprint": "sha256:vendor-test-fp-1",
@@ -374,12 +385,15 @@ def test_http_transport_rejects_revoked_certificate(monkeypatch):
         json.dump(pinset_data, handle)
 
     transport = HttpCommandTransport(config)
+    nonce = 0
 
     def fake_urlopen(req, timeout, context=None):
+        nonlocal nonce
+        nonce += 1
         command_id = json.loads(req.data.decode("utf-8"))["command_id"]
         ack = {
             "command_id": command_id,
-            "ack_nonce": 1,
+            "ack_nonce": nonce,
             "ack_kid": "kid-a",
             "vendor_id": "vendor-test",
             "mtls_cert_fingerprint": "sha256:vendor-test-fp-1",
@@ -391,3 +405,49 @@ def test_http_transport_rejects_revoked_certificate(monkeypatch):
 
     with pytest.raises(AdapterExecutionError, match="revoked vendor certificate fingerprint"):
         transport.send_command("veh-1", {"type": "arm"})
+
+
+def test_http_transport_auto_rolls_back_pinset_on_ack_errors(monkeypatch):
+    config, key_a, _ = _base_config()
+    config.rollout_policy = RolloutPolicyConfig(
+        auto_rollback_enabled=True,
+        error_window_size=1,
+        error_rate_threshold=1.0,
+        min_samples=1,
+        rollback_cooldown_s=0,
+    )
+
+    pinset_data = json.loads(open(config.cert_attestation.pinset_path, encoding="utf-8").read())
+    pinset_data["vendors"]["vendor-test"] = {
+        "active": [{"fingerprint": "sha256:active-only", "not_before": None, "not_after": None}],
+        "next": [],
+        "previous_active": [{"fingerprint": "sha256:vendor-test-fp-1", "not_before": None, "not_after": None}],
+        "allowed": ["sha256:active-only", "sha256:vendor-test-fp-1"],
+        "revoked": [],
+    }
+    with open(config.cert_attestation.pinset_path, "w", encoding="utf-8") as handle:
+        json.dump(pinset_data, handle)
+
+    transport = HttpCommandTransport(config)
+    nonce = 0
+
+    def fake_urlopen(req, timeout, context=None):
+        nonlocal nonce
+        nonce += 1
+        command_id = json.loads(req.data.decode("utf-8"))["command_id"]
+        ack = {
+            "command_id": command_id,
+            "ack_nonce": nonce,
+            "ack_kid": "kid-a",
+            "vendor_id": "vendor-test",
+            "mtls_cert_fingerprint": "sha256:vendor-test-fp-1",
+        }
+        ack["ack_signature"] = _sign_ack(ack, key_a)
+        return _FakeResponse(202, ack)
+
+    monkeypatch.setattr("autonomy.transport.request.urlopen", fake_urlopen)
+
+    with pytest.raises(AdapterExecutionError, match="certificate fingerprint not pinned"):
+        transport.send_command("veh-1", {"type": "arm"})
+
+    transport.send_command("veh-1", {"type": "disarm"})

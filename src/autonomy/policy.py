@@ -10,6 +10,7 @@ from .models import (
     IdempotencyConfig,
     PolicyConfig,
     RetryPolicy,
+    RolloutPolicyConfig,
     TlsConfig,
     TransportConfig,
 )
@@ -82,6 +83,21 @@ def load_transport_config(file_path: str | Path) -> TransportConfig:
         pinset_path=str(cert_data.get("pinset_path", "config/vendor_cert_pins.json")),
     )
 
+    rollout_data = data.get("rollout_policy", {})
+    rollout_path_raw = rollout_data.get("rollout_policy_path")
+    if isinstance(rollout_path_raw, str):
+        rollout_path = Path(rollout_path_raw)
+        if rollout_path.exists():
+            rollout_data = json.loads(rollout_path.read_text(encoding="utf-8"))
+
+    rollout_policy = RolloutPolicyConfig(
+        auto_rollback_enabled=bool(rollout_data.get("auto_rollback_enabled", True)),
+        error_window_size=max(1, int(rollout_data.get("error_window_size", 20))),
+        error_rate_threshold=float(rollout_data.get("error_rate_threshold", 0.4)),
+        min_samples=max(1, int(rollout_data.get("min_samples", 5))),
+        rollback_cooldown_s=float(rollout_data.get("rollback_cooldown_s", 30.0)),
+    )
+
     return TransportConfig(
         endpoint_url=str(data["endpoint_url"]),
         timeout_s=float(data.get("timeout_s", 1.0)),
@@ -89,6 +105,7 @@ def load_transport_config(file_path: str | Path) -> TransportConfig:
         tls=tls,
         ack=ack,
         cert_attestation=cert_attestation,
+        rollout_policy=rollout_policy,
         idempotency=idempotency,
         retry=retry,
     )

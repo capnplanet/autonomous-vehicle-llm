@@ -7,6 +7,7 @@ import ssl
 import time
 import uuid
 from abc import ABC, abstractmethod
+from collections import deque
 from dataclasses import dataclass
 from urllib import error, request
 
@@ -83,6 +84,8 @@ class TransportBase(CommandTransport):
         self._ledger = CommandLedger(config.idempotency.store_path)
         self._keyring = VendorAckKeyring(config.ack.keyring_path)
         self._cert_pins = VendorCertPinset(config.cert_attestation.pinset_path)
+        self._ack_outcomes: deque[bool] = deque(maxlen=config.rollout_policy.error_window_size)
+        self._last_rollback_ts_by_vendor: dict[str, float] = {}
 
     def _build_envelope(self, vehicle_id: str, payload: dict[str, object]) -> CommandEnvelope:
         command_id = str(uuid.uuid4())
@@ -154,6 +157,10 @@ class TransportBase(CommandTransport):
         if self.config.cert_attestation.required:
             self._validate_cert_binding(data)
 
+        vendor_id = data.get(self.config.ack.vendor_field)
+        if isinstance(vendor_id, str):
+            self._record_ack_verification_result(True, vendor_id)
+
     def _validate_cert_binding(self, data: dict[str, object]) -> None:
         vendor_field = self.config.ack.vendor_field
         vendor_raw = data.get(vendor_field)
@@ -168,6 +175,57 @@ class TransportBase(CommandTransport):
         fingerprint = str(fingerprint_raw)
 
         self._cert_pins.assert_vendor_fingerprint_allowed(vendor_id, fingerprint)
+
+    def _record_ack_verification_failure(self, data: dict[str, object], error_detail: str) -> None:
+        vendor_raw = data.get(self.config.ack.vendor_field)
+        if not isinstance(vendor_raw, str):
+            return
+        self._record_ack_verification_result(False, vendor_raw, error_detail)
+
+    def _record_ack_verification_result(
+        self,
+        success: bool,
+        vendor_id: str,
+        error_detail: str | None = None,
+    ) -> None:
+        self._ack_outcomes.append(success)
+
+        policy = self.config.rollout_policy
+        if success or not policy.auto_rollback_enabled:
+            return
+        sample_count = len(self._ack_outcomes)
+        if sample_count < policy.min_samples:
+            return
+
+        failure_count = sum(1 for outcome in self._ack_outcomes if not outcome)
+        failure_rate = failure_count / sample_count
+        if failure_rate < policy.error_rate_threshold:
+            return
+
+        now = time.time()
+        last_rollback = self._last_rollback_ts_by_vendor.get(vendor_id, 0.0)
+        if now - last_rollback < policy.rollback_cooldown_s:
+            return
+
+        try:
+            self._cert_pins.rollback_to_previous_active(vendor_id)
+            self._last_rollback_ts_by_vendor[vendor_id] = now
+            self._ack_outcomes.clear()
+            self._ledger.append_command_event(
+                vehicle_id=f"vendor:{vendor_id}",
+                command_id="rollout_guard",
+                idempotency_key="rollout_guard",
+                status="auto_rollback",
+                detail=error_detail,
+            )
+        except AdapterExecutionError as rollback_exc:
+            self._ledger.append_command_event(
+                vehicle_id=f"vendor:{vendor_id}",
+                command_id="rollout_guard",
+                idempotency_key="rollout_guard",
+                status="auto_rollback_failed",
+                detail=str(rollback_exc),
+            )
 
     def _validate_ack_signature(self, data: dict[str, object]) -> None:
         sig_field = self.config.ack.signature_field
@@ -284,7 +342,11 @@ class HttpCommandTransport(TransportBase):
                         raw_body = response.read().decode("utf-8")
                         if raw_body.strip():
                             response_data = json.loads(raw_body)
-                        self._validate_ack(vehicle_id, response_data, envelope.command_id)
+                        try:
+                            self._validate_ack(vehicle_id, response_data, envelope.command_id)
+                        except AdapterExecutionError as ack_exc:
+                            self._record_ack_verification_failure(response_data, str(ack_exc))
+                            raise
                         self._mark_seen(envelope.idempotency_key)
                         self._log_event(
                             vehicle_id=vehicle_id,
@@ -341,7 +403,11 @@ class MqttCommandTransport(TransportBase):
                 ack = self.client.wait_for_ack(envelope.command_id, timeout_s=self.config.timeout_s)
                 if ack is None:
                     raise AdapterExecutionError("mqtt ack timeout")
-                self._validate_ack(vehicle_id, ack, envelope.command_id)
+                try:
+                    self._validate_ack(vehicle_id, ack, envelope.command_id)
+                except AdapterExecutionError as ack_exc:
+                    self._record_ack_verification_failure(ack, str(ack_exc))
+                    raise
                 self._mark_seen(envelope.idempotency_key)
                 self._log_event(
                     vehicle_id=vehicle_id,

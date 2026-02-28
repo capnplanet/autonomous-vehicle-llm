@@ -38,6 +38,14 @@
     "fingerprint_field": "mtls_cert_fingerprint",
     "pinset_path": "config/vendor_cert_pins.json"
   },
+  "rollout_policy": {
+    "rollout_policy_path": "config/rollout_policy.json",
+    "auto_rollback_enabled": true,
+    "error_window_size": 20,
+    "error_rate_threshold": 0.4,
+    "min_samples": 5,
+    "rollback_cooldown_s": 30
+  },
   "retry": {
     "max_attempts": 2,
     "backoff_s": 0.05

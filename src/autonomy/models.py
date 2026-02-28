@@ -106,6 +106,15 @@ class CertAttestationConfig:
 
 
 @dataclass(slots=True)
+class RolloutPolicyConfig:
+    auto_rollback_enabled: bool = True
+    error_window_size: int = 20
+    error_rate_threshold: float = 0.4
+    min_samples: int = 5
+    rollback_cooldown_s: float = 30.0
+
+
+@dataclass(slots=True)
 class IdempotencyConfig:
     enabled: bool = True
     key_ttl_s: float = 300.0
@@ -120,5 +129,6 @@ class TransportConfig:
     tls: TlsConfig = field(default_factory=TlsConfig)
     ack: AckConfig = field(default_factory=AckConfig)
     cert_attestation: CertAttestationConfig = field(default_factory=CertAttestationConfig)
+    rollout_policy: RolloutPolicyConfig = field(default_factory=RolloutPolicyConfig)
     idempotency: IdempotencyConfig = field(default_factory=IdempotencyConfig)
     retry: RetryPolicy = field(default_factory=RetryPolicy)

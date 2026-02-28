@@ -1,0 +1,8 @@
+{
+  "keys": {
+    "control-2026-01": {
+      "algorithm": "ed25519",
+      "public_key_b64": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "auto_rollback_enabled": true,
+  "error_window_size": 20,
+  "error_rate_threshold": 0.4,
+  "min_samples": 5,
+  "rollback_cooldown_s": 30
+}
