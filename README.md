@@ -38,7 +38,9 @@ Bundle updates support quorum signatures (`min_signatures` in trust policy) and 
 
 Approvals are environment-scoped (`dev`/`staging`/`prod`) with stricter quorum in higher environments; production global activation requires canary soak-time and error-rate metrics to satisfy trust policy thresholds.
 
-Canary approvals are written to an append-only hash-chained audit log, and production canary approval supports dual-control by requiring distinct approvers before global activation.
+Canary approvals are written to an append-only hash-chained audit log with HMAC-based record sealing, and production canary approval supports dual-control by requiring distinct approvers before global activation.
+
+Approval audit integrity is periodically re-verified during writes (`approval_audit_verify_every_writes`) and can be verified on demand via the ledger verifier API.
 
 ## Runtime Failover
 

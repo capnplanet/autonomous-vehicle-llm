@@ -24,6 +24,8 @@ class SignedBundleUpdater:
         canary_keyring_path: str | None = None,
         canary_pinset_path: str | None = None,
         approval_audit_path: str | None = None,
+        approval_audit_seal_key_path: str | None = None,
+        approval_audit_verify_every_writes: int = 10,
     ) -> None:
         self.trust_store_path = Path(trust_store_path)
         self.state_path = Path(state_path)
@@ -37,7 +39,11 @@ class SignedBundleUpdater:
             ".canary.json"
         )
         default_audit_path = self.state_path.with_name("canary_approval_audit.log")
-        self.approval_audit = CanaryApprovalAuditLedger(str(approval_audit_path or default_audit_path))
+        self.approval_audit = CanaryApprovalAuditLedger(
+            file_path=str(approval_audit_path or default_audit_path),
+            seal_key_path=approval_audit_seal_key_path,
+            verify_every_writes=approval_audit_verify_every_writes,
+        )
 
     def apply_bundle_file(self, bundle_path: str) -> dict[str, object]:
         bundle = json.loads(Path(bundle_path).read_text(encoding="utf-8"))
