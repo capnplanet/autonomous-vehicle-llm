@@ -1,6 +1,25 @@
 {
   "policy": {
-    "min_signatures": 2
+    "min_signatures": 1,
+    "environments": {
+      "dev": {
+        "min_signatures": 1,
+        "require_canary_approval": false,
+        "canary_approval_min_approvers": 1
+      },
+      "staging": {
+        "min_signatures": 2,
+        "require_canary_approval": true,
+        "canary_approval_min_approvers": 1
+      },
+      "prod": {
+        "min_signatures": 3,
+        "require_canary_approval": true,
+        "canary_approval_min_approvers": 2,
+        "canary_min_soak_seconds": 600,
+        "canary_max_error_rate": 0.02
+      }
+    }
   },
   "keys": {
     "control-2026-01": {
