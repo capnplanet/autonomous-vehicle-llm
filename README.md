@@ -34,6 +34,8 @@ Certificate pinsets support staged rollout via `active` and `next` windows, auto
 
 Transport rollout policy supports automatic certificate pin rollback when ACK verification failure rate breaches configured thresholds.
 
+Bundle updates support quorum signatures (`min_signatures` in trust policy) and canary-stage gating, where global activation requires explicit canary approval.
+
 ## Runtime Failover
 
 - Primary path uses a transport-backed adapter.

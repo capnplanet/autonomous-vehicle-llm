@@ -1,8 +1,19 @@
 {
+  "policy": {
+    "min_signatures": 2
+  },
   "keys": {
     "control-2026-01": {
       "algorithm": "ed25519",
       "public_key_b64": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    },
+    "control-2026-02": {
+      "algorithm": "ed25519",
+      "public_key_b64": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB="
+    },
+    "control-2026-03": {
+      "algorithm": "ed25519",
+      "public_key_b64": "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC="
     }
   }
 }
