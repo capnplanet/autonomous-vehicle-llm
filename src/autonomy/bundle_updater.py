@@ -26,6 +26,7 @@ class SignedBundleUpdater:
         approval_audit_path: str | None = None,
         approval_audit_seal_key_path: str | None = None,
         approval_audit_verify_every_writes: int = 10,
+        approval_audit_verify_before_append: bool = True,
     ) -> None:
         self.trust_store_path = Path(trust_store_path)
         self.state_path = Path(state_path)
@@ -43,6 +44,7 @@ class SignedBundleUpdater:
             file_path=str(approval_audit_path or default_audit_path),
             seal_key_path=approval_audit_seal_key_path,
             verify_every_writes=approval_audit_verify_every_writes,
+            verify_before_append=approval_audit_verify_before_append,
         )
 
     def apply_bundle_file(self, bundle_path: str) -> dict[str, object]:

@@ -45,3 +45,50 @@ def test_approval_audit_detects_tamper(tmp_path):
 
     with pytest.raises(AdapterExecutionError, match="seal mismatch|record hash mismatch"):
         ledger.verify_chain()
+
+
+def test_approval_audit_fails_closed_on_startup_if_tampered(tmp_path):
+    log_path = tmp_path / "approval.log"
+    key_path = tmp_path / "approval.key"
+
+    first_ledger = CanaryApprovalAuditLedger(
+        file_path=str(log_path),
+        seal_key_path=str(key_path),
+        verify_every_writes=10,
+    )
+    first_ledger.append("prod", "bundle-a", "ops-1", "first", "pending")
+
+    lines = log_path.read_text(encoding="utf-8").splitlines()
+    entry = json.loads(lines[0])
+    entry["approver"] = "attacker"
+    lines[0] = json.dumps(entry, separators=(",", ":"))
+    log_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    with pytest.raises(AdapterExecutionError, match="seal mismatch|record hash mismatch"):
+        CanaryApprovalAuditLedger(
+            file_path=str(log_path),
+            seal_key_path=str(key_path),
+            verify_every_writes=10,
+        )
+
+
+def test_approval_audit_detects_tamper_before_append(tmp_path):
+    log_path = tmp_path / "approval.log"
+    key_path = tmp_path / "approval.key"
+
+    ledger = CanaryApprovalAuditLedger(
+        file_path=str(log_path),
+        seal_key_path=str(key_path),
+        verify_every_writes=100,
+        verify_before_append=True,
+    )
+    ledger.append("prod", "bundle-a", "ops-1", "first", "pending")
+
+    lines = log_path.read_text(encoding="utf-8").splitlines()
+    entry = json.loads(lines[0])
+    entry["reason"] = "tampered-before-append"
+    lines[0] = json.dumps(entry, separators=(",", ":"))
+    log_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    with pytest.raises(AdapterExecutionError, match="seal mismatch|record hash mismatch"):
+        ledger.append("prod", "bundle-a", "ops-2", "second", "approved")

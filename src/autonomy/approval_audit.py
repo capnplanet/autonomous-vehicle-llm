@@ -17,15 +17,22 @@ class CanaryApprovalAuditLedger:
         file_path: str,
         seal_key_path: str | None = None,
         verify_every_writes: int = 10,
+        verify_before_append: bool = True,
     ) -> None:
         self.file_path = Path(file_path)
         self.file_path.parent.mkdir(parents=True, exist_ok=True)
         self.seal_key_path = Path(seal_key_path) if seal_key_path else self.file_path.with_suffix(".seal.key")
         self.seal_key = self._load_or_create_seal_key(self.seal_key_path)
         self.verify_every_writes = max(1, verify_every_writes)
+        self.verify_before_append = verify_before_append
         self._append_count = self._line_count()
+        if self._append_count > 0:
+            self.verify_chain()
 
     def append(self, environment: str, bundle_hash: str, approver: str, reason: str, status: str) -> dict[str, object]:
+        if self.verify_before_append and self._append_count > 0:
+            self.verify_chain()
+
         previous_hash = self._last_hash()
         record: dict[str, object] = {
             "ts": time.time(),

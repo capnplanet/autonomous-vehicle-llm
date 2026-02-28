@@ -42,6 +42,8 @@ Canary approvals are written to an append-only hash-chained audit log with HMAC-
 
 Approval audit integrity is periodically re-verified during writes (`approval_audit_verify_every_writes`) and can be verified on demand via the ledger verifier API.
 
+Approval audit verification is fail-closed on startup and before append by default (`approval_audit_verify_before_append=true`), preventing new approvals from being logged if existing audit data has been tampered.
+
 ## Runtime Failover
 
 - Primary path uses a transport-backed adapter.
