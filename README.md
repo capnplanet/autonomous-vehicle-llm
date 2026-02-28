@@ -9,7 +9,10 @@ Safety-first scaffold for autonomous movement of unmanned vehicles.
 - `safety_kernel`: deterministic policy checks and fail-safe decisions.
 - `edge_supervisor`: executes approved plans through a vehicle adapter.
 - `vehicle_adapter`: capability profiles for ground/aerial/marine adapters.
-- `transport`: HTTP/MQTT command transport stubs with auth, timeout, and retry.
+- `transport`: vendor-integrated HTTP/MQTT transports with auth rotation, TLS/mTLS, ACK correlation, and idempotency keys.
+- `ledger`: durable SQLite command ledger for idempotency persistence and per-vehicle ACK nonce tracking.
+- `keyring`: per-vendor Ed25519 public keys with rotation and revocation support.
+- `cert_pins`: per-vendor certificate fingerprint pinsets for mTLS identity attestation.
 - `audit`: tamper-evident signed audit log chain.
 
 ## Quick Start
@@ -23,6 +26,10 @@ python -m src.main
 - Policy file: `config/policy.default.json`
 - Transport file: `config/transport.default.json`
 - Audit log output: `logs/audit.log`
+
+Transport config supports rotating bearer tokens, TLS/mTLS cert paths, command ACK field mapping, nonce replay windows, Ed25519 signature verification, key-id/vendor routing, certificate fingerprint pinsets, and durable idempotency store paths.
+
+Certificate pinsets support staged rollout via `active` and `next` windows, automatic cutover when active pins expire, and rollback to previous active pins.
 
 ## Runtime Failover
 

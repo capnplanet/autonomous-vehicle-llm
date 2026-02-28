@@ -1,0 +1,18 @@
+{
+  "vendors": {
+    "vendor-sim": {
+      "active_kid": "kid-2026-02",
+      "keys": {
+        "kid-2026-01": {
+          "algorithm": "ed25519",
+          "public_key_b64": "DVKMuEawU4gEoF0E3lT2TAS1u5YY2Fe2Dfa4CDpNszc="
+        },
+        "kid-2026-02": {
+          "algorithm": "ed25519",
+          "public_key_b64": "4VB/MzynUYCe9lTXEcwHhwxiLyCTOs0CxPWjDiuV9iQ="
+        }
+      },
+      "revoked": []
+    }
+  }
+}

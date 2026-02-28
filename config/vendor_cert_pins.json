@@ -1,0 +1,25 @@
+{
+  "vendors": {
+    "vendor-sim": {
+      "active": [
+        {
+          "fingerprint": "sha256:6f4d11eec7d7c6a4d5f5b8b1cc392fb7b4f308993ec3a8d6f5f12e6f1b4d2090",
+          "not_before": 1700000000,
+          "not_after": 1893456000
+        }
+      ],
+      "next": [
+        {
+          "fingerprint": "sha256:1afccf05c4a476b45a1f465969609eec28a7a2a23df683ef93864fe30f15df58",
+          "not_before": 1893456001,
+          "not_after": 1956528000
+        }
+      ],
+      "allowed": [
+        "sha256:6f4d11eec7d7c6a4d5f5b8b1cc392fb7b4f308993ec3a8d6f5f12e6f1b4d2090",
+        "sha256:1afccf05c4a476b45a1f465969609eec28a7a2a23df683ef93864fe30f15df58"
+      ],
+      "revoked": []
+    }
+  }
+}
