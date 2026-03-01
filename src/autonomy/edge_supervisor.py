@@ -9,6 +9,7 @@ from .mapping import GeofenceMappingService, MappingService
 from .models import Action, ActionType, MissionPlan, VehicleState
 from .obstacle_avoidance import AvoidancePlanner, PassThroughAvoidancePlanner
 from .perception import NullPerceptionPipeline, PerceptionPipeline
+from .reason_codes import to_policy_reason_code
 from .safety_kernel import SafetyKernel
 from .vehicle_adapter import VehicleAdapter
 
@@ -76,15 +77,17 @@ class EdgeSupervisor:
                 control_command = self.controller.command_for_action(action_for_execution, localization)
                 action_for_execution = control_command.action
             except AdapterExecutionError as exc:
-                events.append(f"policy_block:{str(exc)}")
+                reason_detail = str(exc)
+                events.append(self._policy_block_event(reason_detail))
                 fallback = self.safety_kernel.fallback_action()
                 state = self._execute_action(state, fallback, events)
                 events.append(f"fallback:{fallback.type.value}")
-                self._audit("policy_block", state, str(exc))
+                self._audit("policy_block", state, reason_detail)
                 self._audit("fallback", state, fallback.type.value)
                 break
             except Exception as exc:  # noqa: BLE001
-                events.append("policy_block:subsystem_failure")
+                reason_detail = "subsystem_failure"
+                events.append(self._policy_block_event(reason_detail))
                 fallback = self.safety_kernel.fallback_action()
                 state = self._execute_action(state, fallback, events)
                 events.append(f"fallback:{fallback.type.value}")
@@ -94,30 +97,33 @@ class EdgeSupervisor:
 
             if action_for_execution.type == ActionType.MOVE_TO and action_for_execution.speed_mps is not None:
                 if action_for_execution.speed_mps > self.adapter.capability_profile.max_speed_mps:
-                    events.append("policy_block:adapter_speed_limit")
+                    reason_detail = "adapter_speed_limit"
+                    events.append(self._policy_block_event(reason_detail))
                     fallback = self.safety_kernel.fallback_action()
                     state = self._execute_action(state, fallback, events)
                     events.append(f"fallback:{fallback.type.value}")
-                    self._audit("policy_block", state, "adapter_speed_limit")
+                    self._audit("policy_block", state, reason_detail)
                     self._audit("fallback", state, fallback.type.value)
                     break
 
             if not self.adapter.supports(action_for_execution):
-                events.append("policy_block:adapter_capability_unsupported")
+                reason_detail = "adapter_capability_unsupported"
+                events.append(self._policy_block_event(reason_detail))
                 fallback = self.safety_kernel.fallback_action()
                 state = self._execute_action(state, fallback, events)
                 events.append(f"fallback:{fallback.type.value}")
-                self._audit("policy_block", state, "adapter_capability_unsupported")
+                self._audit("policy_block", state, reason_detail)
                 self._audit("fallback", state, fallback.type.value)
                 break
 
             ok, reason = self.safety_kernel.precheck(state_for_checks, action_for_execution)
             if not ok:
-                events.append(f"policy_block:{reason}")
+                reason_detail = reason or "unknown"
+                events.append(self._policy_block_event(reason_detail))
                 fallback = self.safety_kernel.fallback_action()
                 state = self._execute_action(state, fallback, events)
                 events.append(f"fallback:{fallback.type.value}")
-                self._audit("policy_block", state, reason or "unknown")
+                self._audit("policy_block", state, reason_detail)
                 self._audit("fallback", state, fallback.type.value)
                 break
 
@@ -126,12 +132,13 @@ class EdgeSupervisor:
                 events.append(f"exec:{action_for_execution.type.value}")
                 self._audit("exec", state, action_for_execution.type.value)
             except AdapterExecutionError:
-                events.append("policy_block:transport_failure")
+                reason_detail = "transport_failure"
+                events.append(self._policy_block_event(reason_detail))
                 fallback = self.safety_kernel.fallback_action()
                 try:
                     state = self._execute_action(state, fallback, events)
                     events.append(f"fallback:{fallback.type.value}")
-                    self._audit("policy_block", state, "transport_failure")
+                    self._audit("policy_block", state, reason_detail)
                     self._audit("fallback", state, fallback.type.value)
                 except AdapterExecutionError:
                     events.append("system_fault:fallback_transport_failure")
@@ -172,3 +179,6 @@ class EdgeSupervisor:
             events.append(f"failover_adapter_used:{action.type.value}")
             self._audit("failover", recovered_state, str(primary_error))
             return recovered_state
+
+    def _policy_block_event(self, reason_detail: str) -> str:
+        return f"policy_block:{to_policy_reason_code(reason_detail)}"

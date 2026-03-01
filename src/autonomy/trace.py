@@ -8,11 +8,16 @@ from pathlib import Path
 from .edge_supervisor import EdgeSupervisor
 from .models import MissionPlan, VehicleState
 from .plan_verifier import PlanVerifier
+from .reason_codes import extract_policy_reason_codes
 from .replay import DeterministicTelemetryReplay
+
+
+TRACE_CONTRACT_VERSION = "1.0"
 
 
 @dataclass(slots=True)
 class MissionTraceArtifact:
+    contract_version: str
     scenario: str
     status: str
     started_at_s: float
@@ -21,6 +26,7 @@ class MissionTraceArtifact:
     final_state: dict[str, object] | None
     plan: dict[str, object]
     events: list[str]
+    policy_reason_codes: list[str]
     errors: list[str]
     telemetry_events_total: int | None
     telemetry_events_consumed: int | None
@@ -44,6 +50,7 @@ class MissionTraceRunner:
         if not ok:
             completed = time.time()
             artifact = MissionTraceArtifact(
+                contract_version=TRACE_CONTRACT_VERSION,
                 scenario=scenario,
                 status="rejected",
                 started_at_s=started,
@@ -52,6 +59,7 @@ class MissionTraceRunner:
                 final_state=None,
                 plan=asdict(plan),
                 events=[],
+                policy_reason_codes=[],
                 errors=errors,
                 telemetry_events_total=replay.total() if replay else None,
                 telemetry_events_consumed=replay.consumed() if replay else None,
@@ -63,6 +71,7 @@ class MissionTraceRunner:
         final_state, events = self.supervisor.run_plan(initial_state, plan)
         completed = time.time()
         artifact = MissionTraceArtifact(
+            contract_version=TRACE_CONTRACT_VERSION,
             scenario=scenario,
             status="executed",
             started_at_s=started,
@@ -71,6 +80,7 @@ class MissionTraceRunner:
             final_state=asdict(final_state),
             plan=asdict(plan),
             events=events,
+            policy_reason_codes=extract_policy_reason_codes(events),
             errors=[],
             telemetry_events_total=replay.total() if replay else None,
             telemetry_events_consumed=replay.consumed() if replay else None,

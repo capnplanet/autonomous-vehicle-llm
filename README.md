@@ -86,9 +86,13 @@ Approval audit verification is fail-closed on startup and before append by defau
 
 Phase 2 adds `TelemetryPerceptionPipeline` with schema validation against `specs/events/telemetry.schema.json`, plus `FusedTelemetryLocalizationEngine` for GPS/IMU-fused state estimates and freshness checks.
 
+Perception now includes deterministic obstacle tracking (`track_id`, age, estimated obstacle velocity) and confidence normalization (`0..1` or `0..100` telemetry confidence inputs).
+
 Phase 3 adds `ClearanceAwareAvoidancePlanner`, which reroutes blocked `move_to` targets to nearby safe candidates (or `hold` if no safe option), plus deterministic telemetry replay utilities for repeatable integration testing.
 
 Phase 3 continuation adds `MissionTraceRunner` for scenario execution traces with verifier result, execution events, and replay consumption metrics written to JSON artifacts.
+
+Trace artifacts now include `contract_version` and canonical `policy_reason_codes` to keep safety explanations deterministic and machine-checkable across upgrades.
 
 ## Safety Principle
 

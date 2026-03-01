@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -19,6 +20,11 @@ class DetectedObstacle:
     radius_m: float
     confidence: float = 1.0
     source: str = "unknown"
+    track_id: str | None = None
+    class_label: str = "unknown"
+    vx_mps: float | None = None
+    vy_mps: float | None = None
+    age_frames: int = 1
 
 
 @dataclass(slots=True)
@@ -27,6 +33,111 @@ class PerceptionFrame:
     obstacles: list[DetectedObstacle] = field(default_factory=list)
     sensor_health: dict[str, bool] = field(default_factory=dict)
     telemetry: dict[str, object] = field(default_factory=dict)
+    tracking_summary: dict[str, int | float] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
+class _TrackState:
+    x: float
+    y: float
+    timestamp_s: float
+    source: str
+    age_frames: int
+
+
+class DeterministicObstacleTracker:
+    def __init__(self, max_association_distance_m: float = 3.0, max_track_age_s: float = 2.0) -> None:
+        self.max_association_distance_m = max(0.0, max_association_distance_m)
+        self.max_track_age_s = max(0.0, max_track_age_s)
+        self._tracks: dict[str, _TrackState] = {}
+        self._counter = 1
+
+    def update(self, obstacles: list[DetectedObstacle], timestamp_s: float) -> list[DetectedObstacle]:
+        self._prune_expired(timestamp_s)
+        assigned_track_ids: set[str] = set()
+        tracked: list[DetectedObstacle] = []
+
+        for obstacle in obstacles:
+            track_id = self._assign_track_id(obstacle, assigned_track_ids)
+            previous = self._tracks.get(track_id)
+            velocity_x, velocity_y = self._estimate_velocity(previous, obstacle, timestamp_s)
+            age_frames = (previous.age_frames + 1) if previous is not None else 1
+
+            tracked.append(
+                DetectedObstacle(
+                    x=obstacle.x,
+                    y=obstacle.y,
+                    radius_m=obstacle.radius_m,
+                    confidence=obstacle.confidence,
+                    source=obstacle.source,
+                    track_id=track_id,
+                    class_label=obstacle.class_label,
+                    vx_mps=velocity_x,
+                    vy_mps=velocity_y,
+                    age_frames=age_frames,
+                )
+            )
+
+            self._tracks[track_id] = _TrackState(
+                x=obstacle.x,
+                y=obstacle.y,
+                timestamp_s=timestamp_s,
+                source=obstacle.source,
+                age_frames=age_frames,
+            )
+            assigned_track_ids.add(track_id)
+
+        return tracked
+
+    def _prune_expired(self, timestamp_s: float) -> None:
+        expired = [
+            track_id
+            for track_id, state in self._tracks.items()
+            if timestamp_s - state.timestamp_s > self.max_track_age_s
+        ]
+        for track_id in expired:
+            self._tracks.pop(track_id, None)
+
+    def _assign_track_id(self, obstacle: DetectedObstacle, assigned_track_ids: set[str]) -> str:
+        if obstacle.track_id:
+            return obstacle.track_id
+
+        associated = self._nearest_associated_track(obstacle, assigned_track_ids)
+        if associated is not None:
+            return associated
+
+        new_id = f"{obstacle.source}-{self._counter:04d}"
+        self._counter += 1
+        return new_id
+
+    def _nearest_associated_track(self, obstacle: DetectedObstacle, assigned_track_ids: set[str]) -> str | None:
+        candidates: list[tuple[float, str]] = []
+        for track_id, state in self._tracks.items():
+            if track_id in assigned_track_ids:
+                continue
+            if state.source != obstacle.source:
+                continue
+            distance = math.dist((obstacle.x, obstacle.y), (state.x, state.y))
+            if distance <= self.max_association_distance_m:
+                candidates.append((distance, track_id))
+
+        if not candidates:
+            return None
+        candidates.sort(key=lambda item: (item[0], item[1]))
+        return candidates[0][1]
+
+    def _estimate_velocity(
+        self,
+        previous: _TrackState | None,
+        obstacle: DetectedObstacle,
+        timestamp_s: float,
+    ) -> tuple[float | None, float | None]:
+        if previous is None:
+            return None, None
+        dt = timestamp_s - previous.timestamp_s
+        if dt <= 0.0:
+            return None, None
+        return (obstacle.x - previous.x) / dt, (obstacle.y - previous.y) / dt
 
 
 class PerceptionPipeline(ABC):
@@ -133,9 +244,11 @@ class TelemetryPerceptionPipeline(PerceptionPipeline):
         self,
         telemetry_source: Callable[[], dict[str, object] | None],
         schema_validator: TelemetrySchemaValidator,
+        tracker: DeterministicObstacleTracker | None = None,
     ) -> None:
         self.telemetry_source = telemetry_source
         self.schema_validator = schema_validator
+        self.tracker = tracker or DeterministicObstacleTracker()
 
     def observe(self, state: VehicleState) -> PerceptionFrame:
         telemetry_event = self.telemetry_source()
@@ -147,12 +260,14 @@ class TelemetryPerceptionPipeline(PerceptionPipeline):
         timestamp = self._event_timestamp(telemetry_event)
         lidar = telemetry_event.get("lidar_obstacles", [])
         obstacles = self._parse_obstacles(lidar)
+        tracked_obstacles = self.tracker.update(obstacles, timestamp)
         sensor_health = self._sensor_health(telemetry_event)
         return PerceptionFrame(
             timestamp_s=timestamp,
-            obstacles=obstacles,
+            obstacles=tracked_obstacles,
             sensor_health=sensor_health,
             telemetry=telemetry_event,
+            tracking_summary=self._tracking_summary(tracked_obstacles),
         )
 
     def _event_timestamp(self, telemetry_event: dict[str, object]) -> float:
@@ -183,19 +298,44 @@ class TelemetryPerceptionPipeline(PerceptionPipeline):
 
             confidence_raw = obstacle.get("confidence", 1.0)
             source_raw = obstacle.get("source", "lidar")
-            confidence = float(confidence_raw) if isinstance(confidence_raw, (int, float)) else 1.0
+            confidence = self._normalize_confidence(confidence_raw)
             source = str(source_raw)
+            object_id_raw = obstacle.get("object_id")
+            class_label_raw = obstacle.get("class_label", "unknown")
+            object_id = str(object_id_raw) if isinstance(object_id_raw, str) and object_id_raw else None
+            class_label = str(class_label_raw)
 
             obstacles.append(
                 DetectedObstacle(
                     x=float(x),
                     y=float(y),
                     radius_m=max(0.0, float(radius_m)),
-                    confidence=min(max(confidence, 0.0), 1.0),
+                    confidence=confidence,
                     source=source,
+                    track_id=object_id,
+                    class_label=class_label,
                 )
             )
         return obstacles
+
+    def _normalize_confidence(self, confidence_raw: object) -> float:
+        if not isinstance(confidence_raw, (int, float)):
+            return 1.0
+
+        value = float(confidence_raw)
+        if value > 1.0 and value <= 100.0:
+            value = value / 100.0
+        return min(max(value, 0.0), 1.0)
+
+    def _tracking_summary(self, obstacles: list[DetectedObstacle]) -> dict[str, int | float]:
+        if not obstacles:
+            return {"tracked_count": 0, "avg_confidence": 0.0}
+
+        avg_confidence = sum(obstacle.confidence for obstacle in obstacles) / len(obstacles)
+        return {
+            "tracked_count": len(obstacles),
+            "avg_confidence": avg_confidence,
+        }
 
     def _sensor_health(self, telemetry_event: dict[str, object]) -> dict[str, bool]:
         return {

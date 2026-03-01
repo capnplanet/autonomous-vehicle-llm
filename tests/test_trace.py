@@ -10,7 +10,7 @@ from autonomy.perception import TelemetryPerceptionPipeline, TelemetrySchemaVali
 from autonomy.plan_verifier import PlanVerifier
 from autonomy.replay import DeterministicTelemetryReplay
 from autonomy.safety_kernel import SafetyKernel
-from autonomy.trace import MissionTraceRunner
+from autonomy.trace import MissionTraceRunner, TRACE_CONTRACT_VERSION
 from autonomy.vehicle_adapter import SimVehicleAdapter
 
 
@@ -53,10 +53,13 @@ def test_trace_runner_writes_executed_artifact(tmp_path):
     )
 
     assert artifact.status == "executed"
+    assert artifact.contract_version == TRACE_CONTRACT_VERSION
     assert output.exists()
     written = json.loads(output.read_text(encoding="utf-8"))
+    assert written["contract_version"] == TRACE_CONTRACT_VERSION
     assert written["status"] == "executed"
     assert "exec:arm" in written["events"]
+    assert written["policy_reason_codes"] == []
 
 
 def test_trace_runner_rejects_invalid_plan(tmp_path):
@@ -78,6 +81,8 @@ def test_trace_runner_rejects_invalid_plan(tmp_path):
     )
 
     assert artifact.status == "rejected"
+    assert artifact.contract_version == TRACE_CONTRACT_VERSION
+    assert artifact.policy_reason_codes == []
     assert "last action must be disarm" in artifact.errors
 
 
@@ -125,4 +130,41 @@ def test_trace_runner_reports_replay_consumption(tmp_path):
     assert artifact.status == "executed"
     assert artifact.telemetry_events_total == 2
     assert artifact.telemetry_events_consumed == 2
+    assert artifact.policy_reason_codes == []
     assert replay.remaining() == 0
+
+
+def test_trace_runner_collects_policy_reason_codes(tmp_path):
+    runner = MissionTraceRunner(
+        supervisor=EdgeSupervisor(SafetyKernel(), SimVehicleAdapter()),
+        verifier=PlanVerifier(),
+    )
+    low_battery_state = VehicleState(
+        vehicle_id="veh-001",
+        x=0.0,
+        y=0.0,
+        battery_pct=10.0,
+        armed=True,
+        connected=True,
+        home_x=0.0,
+        home_y=0.0,
+    )
+    plan = MissionPlan(
+        goal="low battery block",
+        vehicle_id="veh-001",
+        actions=[
+            Action(type=ActionType.ARM),
+            Action(type=ActionType.MOVE_TO, x=1.0, y=1.0, speed_mps=1.0),
+            Action(type=ActionType.DISARM),
+        ],
+    )
+
+    artifact = runner.run(
+        scenario="policy-code",
+        initial_state=low_battery_state,
+        plan=plan,
+        output_path=tmp_path / "policy-code.json",
+    )
+
+    assert artifact.status == "executed"
+    assert "battery_below_motion_threshold" in artifact.policy_reason_codes
