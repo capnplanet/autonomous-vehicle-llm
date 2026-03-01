@@ -29,6 +29,32 @@ Safety-first scaffold for autonomous movement of unmanned vehicles.
 python -m src.main
 ```
 
+## CLI
+
+Run demo mission:
+
+```bash
+python -m src.main demo
+```
+
+List available replay trace scenarios:
+
+```bash
+python -m src.main trace --list-scenarios
+```
+
+Run a named trace scenario and write artifact under `logs/traces/` automatically:
+
+```bash
+python -m src.main trace --scenario nominal_replay
+```
+
+Run a named trace scenario with explicit output path:
+
+```bash
+python -m src.main trace --scenario blocked_target --output logs/traces/blocked-target.json
+```
+
 ## Config
 
 - Policy file: `config/policy.default.json`
