@@ -8,6 +8,27 @@
     "timestamp": {"type": "string", "format": "date-time"},
     "x": {"type": "number"},
     "y": {"type": "number"},
+    "gps_x": {"type": "number"},
+    "gps_y": {"type": "number"},
+    "imu_vx_mps": {"type": "number"},
+    "imu_vy_mps": {"type": "number"},
+    "heading_rad": {"type": "number"},
+    "position_std_m": {"type": "number", "minimum": 0},
+    "lidar_obstacles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["x", "y", "radius_m"],
+        "properties": {
+          "x": {"type": "number"},
+          "y": {"type": "number"},
+          "radius_m": {"type": "number", "minimum": 0},
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+          "source": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
     "battery_pct": {"type": "number", "minimum": 0, "maximum": 100},
     "armed": {"type": "boolean"},
     "connected": {"type": "boolean"}

@@ -8,6 +8,11 @@ Safety-first scaffold for autonomous movement of unmanned vehicles.
 - `plan_verifier`: validates plans against mission schema and static constraints.
 - `safety_kernel`: deterministic policy checks and fail-safe decisions.
 - `edge_supervisor`: executes approved plans through a vehicle adapter.
+- `perception`: perception frame and obstacle signal pipeline interfaces.
+- `localization`: localization estimate interfaces (pose/velocity/uncertainty).
+- `mapping`: geofence and obstacle-distance query interfaces.
+- `obstacle_avoidance`: local action refinement hooks.
+- `controller`: action-to-command closed-loop control hooks.
 - `vehicle_adapter`: capability profiles for ground/aerial/marine adapters.
 - `transport`: vendor-integrated HTTP/MQTT transports with auth rotation, TLS/mTLS, ACK correlation, and idempotency keys.
 - `ledger`: durable SQLite command ledger for idempotency persistence and per-vehicle ACK nonce tracking.
@@ -48,6 +53,10 @@ Approval audit verification is fail-closed on startup and before append by defau
 
 - Primary path uses a transport-backed adapter.
 - On transport failure, `edge_supervisor` can execute the same action via a failover adapter.
+
+`edge_supervisor` now supports optional perception → localization → mapping → avoidance → controller hooks before action execution. Defaults are pass-through/no-op to preserve MVP behavior.
+
+Phase 2 adds `TelemetryPerceptionPipeline` with schema validation against `specs/events/telemetry.schema.json`, plus `FusedTelemetryLocalizationEngine` for GPS/IMU-fused state estimates and freshness checks.
 
 ## Safety Principle
 

@@ -23,6 +23,10 @@ def load_policy_config(file_path: str | Path) -> PolicyConfig:
         max_speed_mps=float(data.get("max_speed_mps", 8.0)),
         min_battery_for_motion_pct=float(data.get("min_battery_for_motion_pct", 25.0)),
         geofence_abs_xy_limit_m=float(data.get("geofence_abs_xy_limit_m", 100.0)),
+        min_obstacle_standoff_m=float(data.get("min_obstacle_standoff_m", 2.0)),
+        max_localization_std_m=float(data.get("max_localization_std_m", 5.0)),
+        max_sensor_staleness_s=float(data.get("max_sensor_staleness_s", 1.0)),
+        control_tick_hz=float(data.get("control_tick_hz", 5.0)),
     )
 
 

@@ -2,6 +2,7 @@ import json
 
 from autonomy.audit import SignedAuditLogger
 from autonomy.edge_supervisor import EdgeSupervisor
+from autonomy.localization import LocalizationEstimate
 from autonomy.models import (
     Action,
     ActionType,
@@ -12,6 +13,20 @@ from autonomy.models import (
 )
 from autonomy.safety_kernel import SafetyKernel
 from autonomy.vehicle_adapter import SimVehicleAdapter
+
+
+class StaleLocalizationEngine:
+    def estimate(self, state, frame=None):
+        return LocalizationEstimate(
+            x=state.x,
+            y=state.y,
+            heading_rad=0.0,
+            vx_mps=0.0,
+            vy_mps=0.0,
+            position_std_m=0.0,
+            timestamp_s=0.0,
+            fresh=False,
+        )
 
 
 def test_policy_block_triggers_fallback_rth():
@@ -74,3 +89,33 @@ def test_adapter_speed_limit_and_audit_log(tmp_path):
     records = [json.loads(line) for line in lines]
     assert records[0]["event_type"] == "policy_block"
     assert records[1]["event_type"] == "fallback"
+
+
+def test_stale_localization_triggers_fallback():
+    supervisor = EdgeSupervisor(
+        SafetyKernel(),
+        SimVehicleAdapter(),
+        localization_engine=StaleLocalizationEngine(),
+    )
+    state = VehicleState(
+        vehicle_id="veh-001",
+        x=2,
+        y=1,
+        battery_pct=80,
+        armed=True,
+        connected=True,
+        home_x=0,
+        home_y=0,
+    )
+    plan = MissionPlan(
+        goal="stale localization",
+        vehicle_id="veh-001",
+        actions=[Action(type=ActionType.MOVE_TO, x=5, y=5, speed_mps=2)],
+    )
+
+    final_state, events = supervisor.run_plan(state, plan)
+
+    assert any(evt.startswith("policy_block:localization_stale") for evt in events)
+    assert "fallback:return_to_home" in events
+    assert final_state.x == 0
+    assert final_state.y == 0

@@ -6,6 +6,11 @@
 - `plan_verifier`: Rejects malformed or unsafe-by-structure plans.
 - `edge_supervisor`: Executes actions on edge with deterministic control loop.
 - `safety_kernel`: Enforces policy constraints before every action.
+- `perception`: Produces obstacle/sensor frames from telemetry input.
+- `localization`: Produces pose/velocity/uncertainty estimates.
+- `mapping`: Resolves geofence and nearest-obstacle queries.
+- `obstacle_avoidance`: Refines planned actions into locally safe actions.
+- `controller`: Converts actions to control commands for execution.
 - `vehicle_adapter`: Abstracts vendor-specific APIs for each vehicle type.
 
 ## Control Principle

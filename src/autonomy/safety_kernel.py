@@ -9,11 +9,22 @@ class SafetyKernel:
         if not state.connected:
             return False, "vehicle disconnected"
 
+        if state.position_std_m > self.config.max_localization_std_m:
+            return False, "localization uncertainty above threshold"
+
+        if state.sensor_age_s > self.config.max_sensor_staleness_s:
+            return False, "sensor data stale"
+
         if action.type == ActionType.MOVE_TO:
             if action.speed_mps is None or action.speed_mps > self.config.max_speed_mps:
                 return False, "speed exceeds policy"
             if state.battery_pct < self.config.min_battery_for_motion_pct:
                 return False, "battery below motion threshold"
+            if (
+                state.nearest_obstacle_distance_m is not None
+                and state.nearest_obstacle_distance_m < self.config.min_obstacle_standoff_m
+            ):
+                return False, "obstacle standoff violated"
             if action.x is None or action.y is None:
                 return False, "missing move target"
             if abs(action.x) > self.config.geofence_abs_xy_limit_m:

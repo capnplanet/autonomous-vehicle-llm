@@ -43,6 +43,12 @@ class VehicleState:
     connected: bool
     home_x: float = 0.0
     home_y: float = 0.0
+    heading_rad: float = 0.0
+    vx_mps: float = 0.0
+    vy_mps: float = 0.0
+    position_std_m: float = 0.0
+    sensor_age_s: float = 0.0
+    nearest_obstacle_distance_m: float | None = None
 
 
 @dataclass(slots=True)
@@ -50,6 +56,10 @@ class PolicyConfig:
     max_speed_mps: float = 8.0
     min_battery_for_motion_pct: float = 25.0
     geofence_abs_xy_limit_m: float = 100.0
+    min_obstacle_standoff_m: float = 2.0
+    max_localization_std_m: float = 5.0
+    max_sensor_staleness_s: float = 1.0
+    control_tick_hz: float = 5.0
 
 
 @dataclass(slots=True)
