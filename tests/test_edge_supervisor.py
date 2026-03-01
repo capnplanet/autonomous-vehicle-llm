@@ -1,4 +1,5 @@
 import json
+import time
 
 from autonomy.audit import SignedAuditLogger
 from autonomy.edge_supervisor import EdgeSupervisor
@@ -11,6 +12,8 @@ from autonomy.models import (
     VehicleDomain,
     VehicleState,
 )
+from autonomy.obstacle_avoidance import ClearanceAwareAvoidancePlanner
+from autonomy.perception import DetectedObstacle, PerceptionFrame
 from autonomy.safety_kernel import SafetyKernel
 from autonomy.vehicle_adapter import SimVehicleAdapter
 
@@ -26,6 +29,14 @@ class StaleLocalizationEngine:
             position_std_m=0.0,
             timestamp_s=0.0,
             fresh=False,
+        )
+
+
+class TargetBlockedPerception:
+    def observe(self, state):
+        return PerceptionFrame(
+            timestamp_s=time.time(),
+            obstacles=[DetectedObstacle(x=10.0, y=5.0, radius_m=1.5)],
         )
 
 
@@ -119,3 +130,32 @@ def test_stale_localization_triggers_fallback():
     assert "fallback:return_to_home" in events
     assert final_state.x == 0
     assert final_state.y == 0
+
+
+def test_obstacle_avoidance_reroutes_move_target():
+    supervisor = EdgeSupervisor(
+        SafetyKernel(),
+        SimVehicleAdapter(),
+        perception_pipeline=TargetBlockedPerception(),
+        avoidance_planner=ClearanceAwareAvoidancePlanner(min_clearance_m=2.0, sidestep_m=3.0),
+    )
+    state = VehicleState(
+        vehicle_id="veh-001",
+        x=0,
+        y=0,
+        battery_pct=80,
+        armed=True,
+        connected=True,
+        home_x=0,
+        home_y=0,
+    )
+    plan = MissionPlan(
+        goal="avoid obstacle",
+        vehicle_id="veh-001",
+        actions=[Action(type=ActionType.MOVE_TO, x=10, y=5, speed_mps=2)],
+    )
+
+    final_state, events = supervisor.run_plan(state, plan)
+
+    assert "exec:move_to" in events
+    assert (final_state.x, final_state.y) == (13.0, 8.0)

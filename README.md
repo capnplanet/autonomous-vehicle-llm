@@ -13,6 +13,8 @@ Safety-first scaffold for autonomous movement of unmanned vehicles.
 - `mapping`: geofence and obstacle-distance query interfaces.
 - `obstacle_avoidance`: local action refinement hooks.
 - `controller`: action-to-command closed-loop control hooks.
+- `replay`: deterministic telemetry replay source for repeatable simulation tests.
+- `trace`: replay-driven mission trace runner with JSON artifact export.
 - `vehicle_adapter`: capability profiles for ground/aerial/marine adapters.
 - `transport`: vendor-integrated HTTP/MQTT transports with auth rotation, TLS/mTLS, ACK correlation, and idempotency keys.
 - `ledger`: durable SQLite command ledger for idempotency persistence and per-vehicle ACK nonce tracking.
@@ -57,6 +59,10 @@ Approval audit verification is fail-closed on startup and before append by defau
 `edge_supervisor` now supports optional perception → localization → mapping → avoidance → controller hooks before action execution. Defaults are pass-through/no-op to preserve MVP behavior.
 
 Phase 2 adds `TelemetryPerceptionPipeline` with schema validation against `specs/events/telemetry.schema.json`, plus `FusedTelemetryLocalizationEngine` for GPS/IMU-fused state estimates and freshness checks.
+
+Phase 3 adds `ClearanceAwareAvoidancePlanner`, which reroutes blocked `move_to` targets to nearby safe candidates (or `hold` if no safe option), plus deterministic telemetry replay utilities for repeatable integration testing.
+
+Phase 3 continuation adds `MissionTraceRunner` for scenario execution traces with verifier result, execution events, and replay consumption metrics written to JSON artifacts.
 
 ## Safety Principle
 

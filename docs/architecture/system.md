@@ -11,6 +11,8 @@
 - `mapping`: Resolves geofence and nearest-obstacle queries.
 - `obstacle_avoidance`: Refines planned actions into locally safe actions.
 - `controller`: Converts actions to control commands for execution.
+- `replay`: Provides deterministic telemetry replay for repeatable closed-loop tests.
+- `trace`: Produces scenario-level JSON execution trace artifacts.
 - `vehicle_adapter`: Abstracts vendor-specific APIs for each vehicle type.
 
 ## Control Principle
