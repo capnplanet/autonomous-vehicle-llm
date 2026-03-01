@@ -121,7 +121,12 @@ def available_trace_scenarios() -> dict[str, TraceScenario]:
         plan=MissionPlan(
             goal="blocked target reroute",
             vehicle_id="veh-002",
-            actions=[Action(type=ActionType.MOVE_TO, x=10.0, y=5.0, speed_mps=2.0)],
+            actions=[
+                Action(type=ActionType.ARM),
+                Action(type=ActionType.MOVE_TO, x=10.0, y=5.0, speed_mps=2.0),
+                Action(type=ActionType.RETURN_TO_HOME),
+                Action(type=ActionType.DISARM),
+            ],
         ),
         telemetry_events=[
             {
