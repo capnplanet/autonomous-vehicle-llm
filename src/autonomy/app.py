@@ -1,9 +1,11 @@
+import os
 from pathlib import Path
 from datetime import UTC, datetime
 
 from .audit import SignedAuditLogger
 from .cloud_planner import CloudPlanner
 from .edge_supervisor import EdgeSupervisor
+from .hf_planner import HuggingFacePlanner
 from .localization import FusedTelemetryLocalizationEngine
 from .obstacle_avoidance import ClearanceAwareAvoidancePlanner
 from .models import VehicleState
@@ -19,7 +21,10 @@ from .vehicle_adapter import GroundHttpVehicleAdapter, GroundVehicleAdapter
 
 
 def run_demo() -> None:
-    planner = CloudPlanner()
+    if os.getenv("HF_TOKEN") and (os.getenv("HF_MODEL_ID") or os.getenv("HF_ENDPOINT_URL")):
+        planner = HuggingFacePlanner()
+    else:
+        planner = CloudPlanner()
     verifier = PlanVerifier()
     policy = load_policy_config(Path("config/policy.default.json"))
     transport_config = load_transport_config(Path("config/transport.default.json"))

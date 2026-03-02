@@ -29,6 +29,21 @@ Safety-first scaffold for autonomous movement of unmanned vehicles.
 python -m src.main
 ```
 
+### Using a Hugging Face hosted LLM (no local weights)
+
+To avoid slowing down this workspace, call Llama 3.1 8B via Hugging Face over HTTPS (Inference API or a dedicated Endpoint):
+
+```bash
+export HF_TOKEN="..."
+export HF_MODEL_ID="meta-llama/Llama-3.1-8B-Instruct"  # or set HF_ENDPOINT_URL for a dedicated endpoint
+python -m src.main demo
+```
+
+Notes:
+- This keeps the model out-of-process (no `transformers` load in the dev container).
+- For lower latency and fewer cold starts, prefer a dedicated Hugging Face Inference Endpoint and set `HF_ENDPOINT_URL`.
+- Some dedicated endpoints expose only OpenAI-compatible routes; in that case the planner auto-falls back to `HF_ENDPOINT_URL/v1/chat/completions` and needs `HF_MODEL_ID` (or `HF_CHAT_MODEL`) set.
+
 ## CLI
 
 Run demo mission:
