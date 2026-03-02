@@ -1,0 +1,18 @@
+{
+  "vendors": {
+    "mock-vendor": {
+      "allowed": [
+        "sha256:mock-fingerprint"
+      ],
+      "active": [
+        {
+          "fingerprint": "sha256:mock-fingerprint",
+          "not_before": null,
+          "not_after": null
+        }
+      ],
+      "next": [],
+      "revoked": []
+    }
+  }
+}

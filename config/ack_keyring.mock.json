@@ -1,0 +1,14 @@
+{
+  "vendors": {
+    "mock-vendor": {
+      "active_kid": "mock-k1",
+      "keys": {
+        "mock-k1": {
+          "algorithm": "ed25519",
+          "public_key_b64": "eQJAFQ3RpWEiRvcnAR32vUqtZmdG6meBUob6PewG+NQ="
+        }
+      },
+      "revoked": []
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "endpoint_url": "http://127.0.0.1:18080",
+  "timeout_s": 1.0,
+  "auth": {
+    "static_token": "mock-token",
+    "rotating_tokens": [],
+    "rotate_every_requests": 1
+  },
+  "tls": {
+    "enabled": false,
+    "verify_peer": true,
+    "ca_cert_path": null,
+    "client_cert_path": null,
+    "client_key_path": null
+  },
+  "ack": {
+    "required": true,
+    "command_id_field": "command_id",
+    "ack_id_field": "command_id",
+    "require_nonce": true,
+    "nonce_field": "ack_nonce",
+    "nonce_window": 1000,
+    "require_signature": true,
+    "signature_field": "ack_signature",
+    "signature_algorithm": "ed25519",
+    "signature_encoding": "base64",
+    "key_id_field": "ack_kid",
+    "vendor_field": "vendor_id",
+    "keyring_path": "config/ack_keyring.mock.json"
+  },
+  "idempotency": {
+    "enabled": true,
+    "key_ttl_s": 300,
+    "store_path": "logs/command_ledger.mock.db"
+  },
+  "cert_attestation": {
+    "required": true,
+    "fingerprint_field": "mtls_cert_fingerprint",
+    "pinset_path": "config/vendor_cert_pins.mock.json"
+  },
+  "rollout_policy": {
+    "auto_rollback_enabled": true,
+    "error_window_size": 20,
+    "error_rate_threshold": 0.4,
+    "min_samples": 5,
+    "rollback_cooldown_s": 30
+  },
+  "retry": {
+    "max_attempts": 2,
+    "backoff_s": 0.05
+  }
+}

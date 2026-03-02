@@ -29,6 +29,40 @@ Safety-first scaffold for autonomous movement of unmanned vehicles.
 python -m src.main
 ```
 
+### Benchmark planner + automation metrics
+
+Run repeated planner → verifier → supervisor cycles and emit a JSON metrics report:
+
+```bash
+python -m src.main benchmark --runs 20 --goal "patrol sector alpha" --output logs/benchmark-llama.json
+```
+
+The benchmark reports planner error rate, verifier pass rate, execution success rate, latency stats (avg/p95/max), and per-run records.
+
+To run with no failover path, disable failover and use local primary execution:
+
+```bash
+python -m src.main benchmark --runs 20 --goal "patrol sector alpha" --no-failover --local-primary --output logs/benchmark-no-failover.json
+```
+
+To enforce strict pass criteria and require primary transport success (no failover usage):
+
+```bash
+python -m src.main benchmark --runs 20 --goal "patrol sector alpha" --strict-pass --require-transport-success --output logs/benchmark-strict-transport.json
+```
+
+For a local end-to-end transport validation, run the mock vendor gateway in one terminal:
+
+```bash
+python scripts/mock_vendor_gateway.py
+```
+
+Then run strict transport benchmark in another terminal using the mock transport profile:
+
+```bash
+python -m src.main benchmark --runs 20 --goal "patrol sector alpha" --strict-pass --require-transport-success --transport-config config/transport.mock.json --output logs/benchmark-strict-transport.json
+```
+
 ### Using a Hugging Face hosted LLM (no local weights)
 
 To avoid slowing down this workspace, call Llama 3.1 8B via Hugging Face over HTTPS (Inference API or a dedicated Endpoint):
