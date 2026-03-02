@@ -2,6 +2,38 @@
 
 Safety-first scaffold for autonomous movement of unmanned vehicles.
 
+## Executive Summary (Feynman-style)
+
+Think of this repo as an autonomous operations team in software:
+
+- **LLM planner** = the pilot that suggests mission steps.
+- **Verifier + safety kernel** = the checklist and safety officer that can block unsafe or malformed actions.
+- **Supervisor + adapters/transports** = the operations crew that actually executes commands and handles degraded conditions.
+- **Audit + approvals + signed updates** = compliance and release governance that records who changed what, when, and why.
+
+In short: the model can be smart, but it is never trusted alone. Deterministic controls make final execution decisions.
+
+### Executive use cases
+
+- **Drone field operations**: patrol/inspection planning with deterministic geofence/speed/battery guardrails.
+- **Industrial IoT actuation**: policy-gated commands for pumps/valves/controllers with signed ACK validation.
+- **Mixed-vendor autonomous fleets**: secure transport with idempotency, replay defense, key rotation, and cert pinning.
+- **High-assurance rollout governance**: quorum-signed bundles, canary-to-global promotion, dual-control approvals, and tamper-evident logs.
+- **Operational readiness benchmarking**: strict pass metrics that separate “mission completed” from “primary transport truly healthy.”
+
+## What this repo is now capable of
+
+- **Hosted LLM integration (Hugging Face)** without local model loading, including OpenAI-compatible endpoint fallback support.
+- **End-to-end plan pipeline**: plan generation → verifier checks → safety-gated execution.
+- **Strict benchmark modes** via CLI:
+	- baseline planner/execution metrics,
+	- no-failover local-primary runs,
+	- strict transport-required runs.
+- **Transport-layer assurance**: ACK correlation, nonce replay defense, Ed25519 signature verification, certificate pin attestation.
+- **Resilience controls**: primary/secondary adapter behavior with explicit failover observability in metrics.
+- **Update and approval governance**: signed update bundles, environment-scoped approvals, dual-control production canary approvals.
+- **Tamper-evident audit chain**: append-only approval logs with sealing and fail-closed verification on startup/append.
+
 ## Components
 
 - `cloud_planner`: builds mission plans from goals.
@@ -146,3 +178,7 @@ Trace artifacts now include `contract_version` and canonical `policy_reason_code
 ## Safety Principle
 
 The LLM can propose plans, but deterministic policy gates must approve each action before execution.
+
+## Operations Guide
+
+- LLM + transport benchmarking runbook: [docs/operations/llm-transport-benchmark-guide.md](docs/operations/llm-transport-benchmark-guide.md)
